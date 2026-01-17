@@ -1,3 +1,4 @@
+# main.py
 import sqlite3
 import telebot
 import os
@@ -11,14 +12,17 @@ from bs4 import BeautifulSoup
 import io
 import re
 
-TOKEN = "8284694498:AAF4f5jma_Dp-GaKFR_Cvar0yfh73QnKBIk"
+# =========================
+# IMPORTANT:
+# ضع التوكن في Render كمتغير بيئة باسم BOT_TOKEN
+# ولا تضعه داخل الكود.
+# =========================
+TOKEN = os.getenv("BOT_TOKEN", "").strip()
+if not TOKEN:
+    raise RuntimeError("BOT_TOKEN is not set. Please add it in Render Environment Variables.")
 
 # ✅ الأدمن الوحيد
 ADMIN_IDS = [5559869840]
-
-# ملاحظة هامة : يمنع بيع الملف او تغيير حقوقة او اعادة نشرة دون ذكر مصدر القناة الاساسي
-# مطور الملف : @RR8R9
-# قناة الملفات : https://t.me/+X0d_nc22x9o0M2Yy
 
 bot = telebot.TeleBot(TOKEN, num_threads=20, skip_pending=True)
 db = kvsqlite.sync.Client('users.sqlite', 'users')
@@ -31,7 +35,7 @@ if not db.exists("force_subscribe_channels"):
 if not db.exists("user_ids"):
     db.set("user_ids", [])
 
-# ✅ تم إلغاء الاشتراك الإجباري نهائياً (لا تثبيت لقناة ولا فحص اشتراك)
+# ✅ تم إلغاء الاشتراك الإجباري نهائياً
 db.set("force_subscribe_channels", [])
 
 LANGUAGES = {
@@ -165,7 +169,6 @@ def clear_user_state(user_id):
 def build_admin_keyboard(lang):
     key = InlineKeyboardMarkup()
     l = LANGUAGES[lang]
-    # ✅ فقط المطلوب: إذاعة + حظر/إلغاء + إحصائيات
     key.add(InlineKeyboardButton(l['admin_broadcast'], callback_data="admin_broadcast"))
     key.add(
         InlineKeyboardButton(l['admin_ban'], callback_data="admin_ban"),
@@ -175,7 +178,6 @@ def build_admin_keyboard(lang):
     return key
 
 def check_subscription(user_id, channels):
-    # ✅ لم يعد مستخدماً بعد إلغاء الاشتراك الإجباري، لكنه موجود بدون تأثير على التحميل
     if not channels:
         return True, None, None
     for channel_id in channels:
@@ -200,8 +202,6 @@ def start_command(message):
     if user_id in (db.get("banned_users") or []):
         bot.send_message(user_id, l['banned'])
         return
-
-    # ✅ تم حذف الاشتراك الإجباري وزر القناة بالكامل
 
     all_users = db.get("user_ids") or []
     if user_id not in all_users:
@@ -343,8 +343,6 @@ def handle_link(message):
     if user_id in (db.get("banned_users") or []):
         return
 
-    # ✅ تم إلغاء فحص الاشتراك الإجباري هنا أيضاً (بدون تأثير على التحميل)
-
     user_data = db.get(f"user_info_{user_id}")
     if user_data:
         user_data['last_active'] = time.time()
@@ -362,14 +360,17 @@ def handle_link(message):
         title_tag = soup.find('h2', class_='h2') or soup.find('div', class_='video-title')
         title = title_tag.text.strip() if title_tag else "media_download"
         safe_title = re.sub(r'[\\/*?:"<>|]', "", title)
+
         encrypted_links = [{"text": link.text.strip().lower(), "encrypted": link['href'].split('#url=')[1]}
                            for link in soup.find_all('a', href=re.compile(r'#url='))]
+
         if not encrypted_links:
             raise ValueError(l['error_general'])
 
         bot.edit_message_text(l['downloading'], chat_id=processing_msg.chat.id, message_id=processing_msg.message_id)
 
         best_video, best_audio_url, no_watermark_video_url = {'url': None, 'size': 0}, None, None
+
         for link in encrypted_links:
             try:
                 resp = requests.get(
@@ -380,14 +381,17 @@ def handle_link(message):
                 )
                 if not (resp.ok and resp.text.strip().startswith('http')):
                     continue
+
                 final_url = resp.text.strip()
                 is_audio = any(keyword in link['text'] for keyword in ['mp3', 'm4a', 'aac', 'kbps'])
+
                 if is_audio and not best_audio_url:
                     best_audio_url = final_url
                 elif not is_audio:
                     if 'without water' in link['text']:
                         no_watermark_video_url = final_url
                         break
+
                     size = int(requests.head(final_url, allow_redirects=True, timeout=60).headers.get('Content-Length', 0))
                     if size > best_video['size']:
                         best_video['url'], best_video['size'] = final_url, size
@@ -396,6 +400,7 @@ def handle_link(message):
 
         final_video_to_send = no_watermark_video_url or best_video['url']
         sent_count = 0
+
         for media_type, media_url in [('video', final_video_to_send), ('audio', best_audio_url)]:
             if not media_url:
                 continue
@@ -467,6 +472,45 @@ def unban_user_handler(message):
     except ValueError:
         bot.reply_to(message, l['ban_invalid_id'])
 
+# =========================
+# WEBHOOK (Render Web Service)
+# =========================
+from flask import Flask, request, abort
+
+app = Flask(__name__)
+
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "hook_secret_path").strip()
+PUBLIC_URL = os.getenv("PUBLIC_URL", "").rstrip("/")
+PORT = int(os.getenv("PORT", "10000"))
+
+@app.get("/")
+def health():
+    return "OK", 200
+
+@app.post(f"/{WEBHOOK_SECRET}")
+def telegram_webhook():
+    if request.headers.get("content-type") != "application/json":
+        abort(415)
+
+    update_json = request.get_data(as_text=True)
+    update = telebot.types.Update.de_json(update_json)
+    bot.process_new_updates([update])
+    return "OK", 200
+
+def setup_webhook():
+    if not PUBLIC_URL:
+        print("PUBLIC_URL not set -> webhook will NOT be configured automatically.")
+        return
+    webhook_url = f"{PUBLIC_URL}/{WEBHOOK_SECRET}"
+    try:
+        bot.remove_webhook()
+        time.sleep(1)
+        bot.set_webhook(url=webhook_url)
+        print("Webhook set to:", webhook_url)
+    except Exception as e:
+        print("Failed to set webhook:", e)
+
 if __name__ == '__main__':
-    print("تم تشغيل البوت بنجاح .")
-    bot.infinity_polling()
+    print("Bot starting in WEBHOOK mode...")
+    setup_webhook()
+    app.run(host="0.0.0.0", port=PORT)
