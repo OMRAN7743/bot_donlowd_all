@@ -37,6 +37,9 @@ dependencies:
   # App version shown in About / bug report template
   package_info_plus: ^10.2.1
 
+  # إبقاء الشاشة مستيقظة أثناء الورد (إعداد اختياري، مُطفأ افتراضيًا)
+  wakelock_plus: ^1.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -23,7 +23,21 @@ class _RemindersSettingsScreenState
     extends ConsumerState<RemindersSettingsScreen> {
   bool _permissionDenied = false;
 
+  /// حالة صلاحية الإشعارات على مستوى النظام، تُقرأ عند فتح الصفحة.
+  bool? _systemNotificationsEnabled;
+
   NotificationService get _notifications => NotificationService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshSystemPermission();
+  }
+
+  Future<void> _refreshSystemPermission() async {
+    final enabled = await _notifications.areNotificationsEnabled();
+    if (mounted) setState(() => _systemNotificationsEnabled = enabled);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +80,10 @@ class _RemindersSettingsScreenState
             ),
           ),
 
-          if (_permissionDenied)
+          // نعرض التنبيه عند رفض صريح، أو عندما يكون للمستخدم تذكير مفعَّل
+          // بينما الإشعارات مُطفأة من إعدادات النظام.
+          if (_permissionDenied ||
+              (_systemNotificationsEnabled == false && settings.hasAnyReminder))
             _PermissionDeniedNotice(onOpenSettings: _openSystemSettings),
 
           SettingSection(
@@ -187,6 +204,7 @@ class _RemindersSettingsScreenState
     setState(() => _permissionDenied = false);
     await persist(true);
     await _notifications.schedule(kind, time);
+    await _refreshSystemPermission();
   }
 
   Future<void> _pickTime(

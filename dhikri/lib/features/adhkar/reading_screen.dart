@@ -49,15 +49,35 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _positionAtInitialDhikr(),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _positionAtInitialDhikr();
+      _applyScreenWake(ref.read(settingsProvider).keepScreenAwake);
+    });
+  }
+
+  @override
+  void deactivate() {
+    // نغادر شاشة الورد: نعيد سلوك الشاشة الطبيعي ونوقف أي قراءة صوتية
+    // حتى لا تستمر بعد خروج المستخدم من الشاشة.
+    unawaited(ref.read(screenWakeProvider).disable());
+    final categoryId = _resolvedCategoryId;
+    if (categoryId != null) {
+      unawaited(ref.read(listenRepeatProvider(categoryId).notifier).stop());
+    }
+    super.deactivate();
   }
 
   @override
   void dispose() {
     _autoNextTimer?.cancel();
     super.dispose();
+  }
+
+  /// يفعّل إبقاء الشاشة مستيقظة أو يوقفه حسب الإعداد.
+  void _applyScreenWake(bool keepAwake) {
+    final service = ref.read(screenWakeProvider);
+    unawaited(keepAwake ? service.enable() : service.disable());
   }
 
   /// يحل القسم الفعلي عندما نأتي من مسار `/dhikr/:id`.
@@ -92,28 +112,53 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
       return const _MissingDhikrScreen();
     }
 
-    final session = ref.watch(readingControllerProvider(categoryId));
+    // تغيير الإعداد أثناء وجود المستخدم في الشاشة يسري فورًا.
+    ref.listen<bool>(
+      settingsProvider.select((s) => s.keepScreenAwake),
+      (_, keepAwake) => _applyScreenWake(keepAwake),
+    );
+
+    // نراقب هنا ما يخصّ أعلى الشاشة فقط. تغيّر عدّاد التكرار أو حالة الصوت
+    // يعيد بناء الأزرار السفلية وحدها، لا نص الذكر ولا بقية الصفحة
+    // (المواصفات §37).
+    final view = ref.watch(
+      readingControllerProvider(categoryId).select(
+        (s) => (
+          dhikrId: s.current?.id,
+          position: s.positionLabel,
+          completed: s.completedCount,
+          total: s.total,
+          categoryName: s.category.name,
+          isEmpty: s.isEmpty,
+        ),
+      ),
+    );
     final settings = ref.watch(settingsProvider);
-    final narration = ref.watch(listenRepeatProvider(categoryId));
     final favorites = ref.watch(favoritesProvider);
     final tokens = DhikriTokens.of(context);
     final reduceMotion = shouldReduceMotion(context, settings);
 
-    final dhikr = session.current;
+    final dhikr = view.dhikrId == null
+        ? null
+        : ref.read(adhkarRepositoryProvider)?.dhikrById(view.dhikrId!);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(session.category.name),
+        title: Text(view.categoryName),
         actions: <Widget>[
-          if (!session.isEmpty)
+          if (!view.isEmpty)
             IconButton(
-              onPressed: () => _showIndexSheet(context, categoryId, session),
+              onPressed: () => _showIndexSheet(
+                context,
+                categoryId,
+                ref.read(readingControllerProvider(categoryId)),
+              ),
               tooltip: 'قائمة أذكار القسم',
               icon: const Icon(Icons.list_rounded),
             ),
         ],
       ),
-      body: session.isEmpty || dhikr == null
+      body: view.isEmpty || dhikr == null
           ? const EmptyState(
               icon: Icons.menu_book_outlined,
               title: 'لا توجد أذكار في هذا القسم بعد',
@@ -130,12 +175,9 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
                       12,
                     ),
                     child: ProgressHeader(
-                      completed: session.completedCount,
-                      total: session.total,
-                      label: ArabicNumbers.outOf(
-                        session.positionLabel,
-                        session.total,
-                      ),
+                      completed: view.completed,
+                      total: view.total,
+                      label: ArabicNumbers.outOf(view.position, view.total),
                     ),
                   ),
                   Expanded(
@@ -160,16 +202,28 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
                       ),
                     ),
                   ),
-                  _BottomControls(
-                    categoryId: categoryId,
-                    session: session,
-                    narration: narration,
-                    reduceMotion: reduceMotion,
-                    onCount: () => _registerRepeat(categoryId),
-                    onNext: () => _goNext(categoryId),
-                    onPrevious: () => ref
-                        .read(readingControllerProvider(categoryId).notifier)
-                        .goToPrevious(),
+                  // مع تكبير الخط على شاشة قصيرة قد تنمو أزرار الأسفل أكثر مما
+                  // يتسع. نقيّدها بنصيب أقصى من الارتفاع ونجعلها قابلة للتمرير
+                  // داخليًا بدل أن يتجاوز التخطيط.
+                  LayoutBuilder(
+                    builder: (context, constraints) => ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.sizeOf(context).height * 0.6,
+                      ),
+                      child: SingleChildScrollView(
+                        child: _BottomControls(
+                          categoryId: categoryId,
+                          reduceMotion: reduceMotion,
+                          onCount: () => _registerRepeat(categoryId),
+                          onNext: () => _goNext(categoryId),
+                          onPrevious: () => ref
+                              .read(
+                                readingControllerProvider(categoryId).notifier,
+                              )
+                              .goToPrevious(),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -274,8 +328,6 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
 class _BottomControls extends ConsumerWidget {
   const _BottomControls({
     required this.categoryId,
-    required this.session,
-    required this.narration,
     required this.reduceMotion,
     required this.onCount,
     required this.onNext,
@@ -283,8 +335,6 @@ class _BottomControls extends ConsumerWidget {
   });
 
   final String categoryId;
-  final ReadingSessionState session;
-  final ListenRepeatState narration;
   final bool reduceMotion;
   final VoidCallback onCount;
   final VoidCallback onNext;
@@ -294,6 +344,8 @@ class _BottomControls extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final tokens = DhikriTokens.of(context);
+    final session = ref.watch(readingControllerProvider(categoryId));
+    final narration = ref.watch(listenRepeatProvider(categoryId));
     final settings = ref.watch(settingsProvider);
     final controller = ref.read(listenRepeatProvider(categoryId).notifier);
 

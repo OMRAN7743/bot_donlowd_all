@@ -3,8 +3,10 @@ import 'package:dhikri/app/bootstrap.dart';
 import 'package:dhikri/app/providers.dart';
 import 'package:dhikri/core/services/narration/narration_service.dart';
 import 'package:dhikri/core/services/preferences_service.dart';
+import 'package:dhikri/core/services/screen_wake_service.dart';
 import 'package:dhikri/data/models/app_settings.dart';
 import 'package:dhikri/data/models/dhikr.dart';
+import 'package:dhikri/data/models/reading_progress.dart';
 import 'package:dhikri/features/adhkar/narration_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,12 +57,16 @@ class FakeNarrationService implements NarrationService {
 /// يشغّل التطبيق كاملًا في الاختبار بحالة إقلاع مُحكَمة.
 Future<KeyValueStore> pumpDhikriApp(
   WidgetTester tester, {
+  RecordingScreenWakeService? screenWake,
   AppSettings settings = AppSettings.defaults,
   KeyValueStore? store,
   bool onboardingCompleted = true,
   Set<String> favorites = const <String>{},
   ContentState? content,
   NarrationService? narration,
+  ReadingProgress? lastSession,
+  Map<String, ReadingProgress> categoryProgress =
+      const <String, ReadingProgress>{},
   Size surfaceSize = const Size(420, 900),
   double textScale = 1.0,
   Brightness platformBrightness = Brightness.light,
@@ -85,10 +91,15 @@ Future<KeyValueStore> pumpDhikriApp(
             onboardingCompleted: onboardingCompleted,
             favorites: favorites,
             content: content,
+            lastSession: lastSession,
+            categoryProgress: categoryProgress,
           ),
         ),
         narrationServiceProvider.overrideWithValue(
           narration ?? FakeNarrationService(),
+        ),
+        screenWakeProvider.overrideWithValue(
+          screenWake ?? RecordingScreenWakeService(),
         ),
       ],
       child: const DhikriApp(),

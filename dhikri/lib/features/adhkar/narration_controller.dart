@@ -100,6 +100,10 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
   /// نحتفظ بمرجع الخدمة لأن `ref` ممنوع استخدامه داخل onDispose.
   NarrationService? _narrationService;
 
+  /// بعد التخلص من المزوّد يصبح كل تعديل على الحالة خطأً في Riverpod.
+  /// قد تصل نداءات متأخرة (مثل `stop` عند مغادرة الشاشة) بعد التخلص، فنتجاهلها.
+  bool _disposed = false;
+
   Timer? _countdown;
   Completer<void>? _manualRepeat;
   bool _stopRequested = false;
@@ -109,9 +113,23 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
   @override
   ListenRepeatState build() {
     _narrationService = ref.read(narrationServiceProvider);
-    ref.onDispose(_teardown);
+    _disposed = false;
+    ref.onDispose(() {
+      _disposed = true;
+      _teardown();
+    });
     return const ListenRepeatState();
   }
+
+  /// يكتب الحالة ما لم يكن المزوّد قد تُخلِّص منه.
+  void _set(ListenRepeatState next) {
+    if (_disposed) return;
+    state = next;
+  }
+
+  /// الحالة الحالية، أو حالة سكون إن تُخلِّص من المزوّد.
+  ListenRepeatState get _current =>
+      _disposed ? const ListenRepeatState() : state;
 
   NarrationService get _narration =>
       _narrationService ?? ref.read(narrationServiceProvider);
@@ -126,30 +144,36 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
     required ReadingSessionState Function() readState,
     required Future<RepeatOutcome> Function() registerRepeat,
   }) async {
-    if (state.isBusy) return;
+    if (_disposed || _current.isBusy) return;
 
     _stopRequested = false;
-    state = const ListenRepeatState(phase: NarrationPhase.preparing);
+    _set(const ListenRepeatState(phase: NarrationPhase.preparing));
 
     final availability = await _narration.checkAvailability();
     if (!_settings.audioEnabled) {
-      state = ListenRepeatState(
-        phase: NarrationPhase.error,
-        errorMessage: const NarrationAvailability.unavailable(
-          NarrationUnavailableReason.disabledByUser,
-        ).message,
+      _set(
+        ListenRepeatState(
+          phase: NarrationPhase.error,
+          errorMessage: const NarrationAvailability.unavailable(
+            NarrationUnavailableReason.disabledByUser,
+          ).message,
+        ),
       );
       return;
     }
     if (!availability.isAvailable) {
-      state = ListenRepeatState(
-        phase: NarrationPhase.error,
-        errorMessage: availability.message,
+      _set(
+        ListenRepeatState(
+          phase: NarrationPhase.error,
+          errorMessage: availability.message,
+        ),
       );
       return;
     }
 
-    await _configureAudioSession();
+    // تهيئة جلسة الصوت أثر جانبي: نطلقها ولا ننتظرها حتى لا يتعطّل بدء
+    // القراءة على جهاز أو منصّة لا تردّ على قناة جلسة الصوت.
+    unawaited(_configureAudioSession());
     await _narration.setRate(_settings.speechRate);
     await _narration.setVoice(_settings.preferredVoiceId);
 
@@ -165,19 +189,23 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
       final dhikr = session.current;
       if (dhikr == null) break;
 
-      state = state.copyWith(
-        phase: NarrationPhase.speaking,
-        clearError: true,
-        clearCountdown: true,
+      _set(
+        _current.copyWith(
+          phase: NarrationPhase.speaking,
+          clearError: true,
+          clearCountdown: true,
+        ),
       );
 
       try {
         await _narration.playDhikr(dhikr);
       } catch (error) {
         if (kDebugMode) debugPrint('Narration playback failed: $error');
-        state = const ListenRepeatState(
-          phase: NarrationPhase.error,
-          errorMessage: 'تعذّر تشغيل الصوت. يمكنك متابعة القراءة نصًّا.',
+        _set(
+          const ListenRepeatState(
+            phase: NarrationPhase.error,
+            errorMessage: 'تعذّر تشغيل الصوت. يمكنك متابعة القراءة نصًّا.',
+          ),
         );
         return;
       }
@@ -189,21 +217,21 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
 
       final outcome = await registerRepeat();
       if (outcome == RepeatOutcome.sessionCompleted) {
-        state = const ListenRepeatState(phase: NarrationPhase.completed);
+        _set(const ListenRepeatState(phase: NarrationPhase.completed));
         return;
       }
       if (outcome == RepeatOutcome.dhikrCompleted ||
           outcome == RepeatOutcome.alreadyComplete) {
         // ننتقل للذكر التالي فقط إذا طلب المستخدم متابعة الورد صوتيًا.
         if (!_settings.continueSessionAudio) {
-          state = const ListenRepeatState(phase: NarrationPhase.completed);
+          _set(const ListenRepeatState(phase: NarrationPhase.completed));
           return;
         }
       }
     }
 
-    if (state.phase != NarrationPhase.completed) {
-      state = const ListenRepeatState();
+    if (_current.phase != NarrationPhase.completed) {
+      _set(const ListenRepeatState());
     }
   }
 
@@ -213,9 +241,11 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
     final duration = mode.duration;
 
     if (duration == null) {
-      state = state.copyWith(
-        phase: NarrationPhase.waitingForRepeat,
-        clearCountdown: true,
+      _set(
+        _current.copyWith(
+          phase: NarrationPhase.waitingForRepeat,
+          clearCountdown: true,
+        ),
       );
       final completer = Completer<void>();
       _manualRepeat = completer;
@@ -225,9 +255,11 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
     }
 
     var remaining = duration.inSeconds;
-    state = state.copyWith(
-      phase: NarrationPhase.waitingForRepeat,
-      secondsRemaining: remaining,
+    _set(
+      _current.copyWith(
+        phase: NarrationPhase.waitingForRepeat,
+        secondsRemaining: remaining,
+      ),
     );
 
     final completer = Completer<void>();
@@ -239,7 +271,7 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
         if (!completer.isCompleted) completer.complete();
         return;
       }
-      state = state.copyWith(secondsRemaining: remaining);
+      _set(_current.copyWith(secondsRemaining: remaining));
     });
 
     await completer.future;
@@ -255,15 +287,15 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
   }
 
   Future<void> pause() async {
-    if (state.phase != NarrationPhase.speaking) return;
+    if (_disposed || _current.phase != NarrationPhase.speaking) return;
     await _narration.pause();
-    state = state.copyWith(phase: NarrationPhase.paused);
+    _set(_current.copyWith(phase: NarrationPhase.paused));
   }
 
   Future<void> resume() async {
-    if (state.phase != NarrationPhase.paused) return;
+    if (_disposed || _current.phase != NarrationPhase.paused) return;
     await _narration.resume();
-    state = state.copyWith(phase: NarrationPhase.speaking);
+    _set(_current.copyWith(phase: NarrationPhase.speaking));
   }
 
   /// يوقف كل شيء ويعيد الحالة إلى السكون.
@@ -275,7 +307,7 @@ class ListenRepeatController extends Notifier<ListenRepeatState> {
     if (completer != null && !completer.isCompleted) completer.complete();
     _manualRepeat = null;
     await _narration.stop();
-    state = const ListenRepeatState();
+    _set(const ListenRepeatState());
   }
 
   /// يهيّئ جلسة الصوت ويتعامل مع المقاطعات (مكالمة، تنبيه من تطبيق آخر).

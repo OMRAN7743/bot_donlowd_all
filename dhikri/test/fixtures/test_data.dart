@@ -118,6 +118,9 @@ abstract final class TestData {
     bool onboardingCompleted = true,
     Set<String> favorites = const <String>{},
     ContentState? content,
+    ReadingProgress? lastSession,
+    Map<String, ReadingProgress> categoryProgress =
+        const <String, ReadingProgress>{},
   }) {
     return AppBootstrap(
       store: store ?? InMemoryKeyValueStore(),
@@ -125,8 +128,8 @@ abstract final class TestData {
       content: content ?? ContentReady(repository ?? TestData.repository()),
       favorites: favorites,
       onboardingCompleted: onboardingCompleted,
-      categoryProgress: const <String, ReadingProgress>{},
-      lastSession: null,
+      categoryProgress: categoryProgress,
+      lastSession: lastSession,
       completionLog: const <String, Set<String>>{},
     );
   }

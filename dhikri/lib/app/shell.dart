@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'providers.dart';
-
 /// الهيكل الرئيسي: شريط سفلي من أربعة أقسام فقط (المواصفات §8).
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -23,8 +21,6 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final seniorMode = ref.watch(settingsProvider.select((s) => s.seniorMode));
-
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: NavigationBar(
@@ -44,8 +40,6 @@ class AppShell extends ConsumerWidget {
             ),
         ],
       ),
-      // في وضع كبار السن نُبقي التسميات ظاهرة دائمًا (مضبوطة في الثيم).
-      extendBody: !seniorMode,
     );
   }
 }

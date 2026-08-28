@@ -154,6 +154,10 @@ class AppSettings {
   double get effectiveTextScale =>
       textScalePreset.factor * (seniorMode ? 1.25 : 1.0);
 
+  /// هل يوجد أي تذكير مفعَّل؟ يُستخدم لتفادي عمل لا لزوم له عند كل استئناف.
+  bool get hasAnyReminder =>
+      morningReminderEnabled || eveningReminderEnabled || customReminderEnabled;
+
   ThemeMode get materialThemeMode => switch (themePreference) {
     AppThemePreference.system => ThemeMode.system,
     AppThemePreference.light => ThemeMode.light,

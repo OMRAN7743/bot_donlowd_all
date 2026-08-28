@@ -81,14 +81,13 @@ class DhikrView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Semantics(
-            label: 'نص الذكر',
-            child: SelectionArea(
-              child: Text(
-                dhikr.text,
-                style: dhikrStyle,
-                textAlign: TextAlign.center,
-              ),
+          // لا نضع Semantics بعنوان عام هنا: قارئ الشاشة يجب أن يقرأ نص الذكر
+          // نفسه، وأي غلاف بعنوان ثابت يطمس النص المهم.
+          SelectionArea(
+            child: Text(
+              dhikr.text,
+              style: dhikrStyle,
+              textAlign: TextAlign.center,
             ),
           ),
           if (showSource && dhikr.hasSource) ...<Widget>[

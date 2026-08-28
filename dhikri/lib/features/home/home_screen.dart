@@ -141,7 +141,15 @@ class _HomeBody extends ConsumerWidget {
             categoryName: resume.categoryName,
             completed: resume.completed,
             total: resume.total,
-            onResume: () => context.push(AppRoutes.category(resume.categoryId)),
+            onResume: () async {
+              // نضع المستخدم عند أول ذكر لم يكتمل بدل آخر موضع لمسه.
+              await ref
+                  .read(readingControllerProvider(resume.categoryId).notifier)
+                  .resumeAtFirstIncomplete();
+              if (context.mounted) {
+                context.push(AppRoutes.category(resume.categoryId));
+              }
+            },
             onRestart: resume.isStale
                 ? () async {
                     await ref
@@ -209,13 +217,15 @@ class _HomeBody extends ConsumerWidget {
   }
 
   _ResumeInfo? _resumeInfo(WidgetRef ref, DateTime now) {
-    final settings = ref.read(settingsProvider);
-    if (!settings.saveReadingProgress) return null;
+    final saveProgress = ref.watch(
+      settingsProvider.select((s) => s.saveReadingProgress),
+    );
+    if (!saveProgress) return null;
 
     final last = ref.watch(progressProvider).lastSession;
     if (last == null) return null;
 
-    final repository = ref.read(adhkarRepositoryProvider);
+    final repository = ref.watch(adhkarRepositoryProvider);
     final category = repository?.categoryById(last.categoryId);
     if (repository == null || category == null) return null;
 

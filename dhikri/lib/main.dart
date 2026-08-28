@@ -17,7 +17,8 @@ Future<void> main() async {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
+  // واجهة حافة إلى حافة؛ ألوان الأشرطة تأتي من الثيم داخل DhikriApp.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // تهيئة المناطق الزمنية للتذكيرات المحلية — بلا أي اتصال بالشبكة.
   await NotificationService.instance.initialize();

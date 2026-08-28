@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/haptics_service.dart';
+import '../core/services/screen_wake_service.dart';
 import '../core/services/preferences_service.dart';
 import '../data/models/app_settings.dart';
 import '../data/repositories/adhkar_repository.dart';
@@ -47,6 +48,11 @@ final adhkarRepositoryProvider = Provider<AdhkarRepository?>((ref) {
 final hapticsProvider = Provider<HapticsService>((ref) {
   return HapticsService(() => ref.read(settingsProvider));
 });
+
+/// خدمة إبقاء الشاشة مستيقظة أثناء الورد.
+final screenWakeProvider = Provider<ScreenWakeService>(
+  (ref) => const PlatformScreenWakeService(),
+);
 
 // ---------------------------------------------------------------------------
 // الإعدادات

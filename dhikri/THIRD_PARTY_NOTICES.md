@@ -32,6 +32,7 @@
 | `flutter_timezone` | قراءة المنطقة الزمنية للجهاز | MIT |
 | `url_launcher` | فتح واتساب والرسائل والهاتف | BSD‑3‑Clause |
 | `package_info_plus` | عرض رقم الإصدار | BSD‑3‑Clause |
+| `wakelock_plus` | إبقاء الشاشة مستيقظة أثناء الورد (اختياري) | BSD‑3‑Clause |
 | `flutter_lints` | قواعد التحليل (تطوير فقط) | BSD‑3‑Clause |
 | `flutter_launcher_icons` | توليد الأيقونات (تطوير فقط) | MIT |
 | `flutter_native_splash` | توليد شاشة البداية (تطوير فقط) | MIT |

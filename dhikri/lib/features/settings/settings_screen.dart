@@ -71,6 +71,13 @@ class SettingsScreen extends ConsumerWidget {
                 value: settings.showSource,
                 onChanged: controller.setShowSource,
               ),
+              SettingSwitchTile(
+                title: 'إبقاء الشاشة مستيقظة أثناء الورد',
+                subtitle: 'تبقى الشاشة مضاءة داخل شاشة الذكر فقط',
+                icon: Icons.brightness_high_outlined,
+                value: settings.keepScreenAwake,
+                onChanged: controller.setKeepScreenAwake,
+              ),
             ],
           ),
 
