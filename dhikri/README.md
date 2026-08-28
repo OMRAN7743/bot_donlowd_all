@@ -1,17 +1,193 @@
-# dhikri
+# ذكري — Dhikri
 
-تطبيق أذكار عربي يعمل بدون إنترنت
+تطبيق أذكار عربي بسيط وهادئ، يعمل بالكامل بدون إنترنت.
+مجاني، بلا إعلانات، بلا اشتراكات، بلا حسابات، وبلا أي خادم.
 
-## Getting Started
+## ما هو ذكري
 
-This project is a starting point for a Flutter application.
+أفتح التطبيق، أجد وردي بسرعة، أقرأ أو أستمع، أكرّر العدد المطلوب، أحصل على
+إشارة إكمال بسيطة، ثم أنتقل للذكر التالي. لا أكثر.
 
-A few resources to get you started if this is your first Flutter project:
+التطبيق موجَّه للمستخدم العربي، ويولي عناية خاصة لكبار السن وضعاف البصر: خط
+كبير، أزرار واسعة، تباعد مريح، ووضع مخصص لكبار السن.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+**الميزات**
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- أقسام أذكار مع شريط تقدُّم، وذكر واحد في كل شاشة بدل صفحات طويلة.
+- عدّاد تكرار واضح لا يتجاوز العدد المطلوب، مع اهتزاز عند الإكمال.
+- «استمع وردّد» باستخدام محرك النطق المثبَّت على الجهاز.
+- مفضلة وبحث عربي يتجاهل التشكيل والتطويل واختلاف صور الألف.
+- عدّاد تسبيح بأهداف ٣٣ و١٠٠ وعدّ مفتوح.
+- تذكيرات محلية اختيارية للصباح والمساء وتذكير إضافي.
+- حفظ موضع القراءة، وبطاقة «أكمل من حيث توقفت»، وعرض مداومة أسبوعي هادئ.
+- وضع داكن، وتباين عالٍ، وتقليل حركة، وأربعة أحجام للنص.
+
+> ⚠️ **حالة المحتوى:** مجموعة الأذكار الإنتاجية فارغة حاليًا عمدًا. التطبيق
+> ومحرّكه جاهزان، لكن لا تُشحن نصوص شرعية غير موثقة.
+> التفاصيل الكاملة في [`CONTENT_AUDIT.md`](CONTENT_AUDIT.md).
+
+## المتطلبات
+
+| الأداة | الإصدار المستخدم في التطوير |
+|---|---|
+| Flutter | 3.47.2 (قناة stable) |
+| Dart | 3.13.2 (قناة stable) |
+| Android minSdk | 24 |
+| Java | 17 |
+
+قناة stable إلزامية. لا تستخدم beta أو dev أو master.
+
+## التشغيل
+
+```bash
+cd dhikri
+flutter pub get
+flutter run
+```
+
+## الاختبار
+
+```bash
+flutter analyze                            # يجب أن يخرج بلا مشكلات
+flutter test                               # كل الاختبارات
+dart run tool/validate_adhkar.dart         # فحص بنيوي لبيانات الأذكار
+dart run tool/validate_adhkar.dart --release   # بوابة الإصدار
+```
+
+بوابة الجودة الكاملة قبل أي تسليم:
+
+```bash
+flutter clean && flutter pub get && dart format . && flutter analyze && flutter test
+```
+
+## بنية المشروع
+
+```
+lib/
+  main.dart                 نقطة الدخول: تهيئة ثم إقلاع ثم تشغيل
+  app/                      الجذر والثيم والتنقّل والمزوّدات العامة
+  core/                     ثوابت، أخطاء، خدمات، أدوات، وعناصر واجهة مشتركة
+    services/narration/     تجريد الصوت: TTS الجهاز أو تسجيلات مرفقة
+  data/                     النماذج والمستودعات ومصدر الأصول
+  features/                 كل ميزة في مجلدها: onboarding, home, adhkar,
+                            favorites, search, tasbih, settings, about, contact
+assets/
+  branding/  data/  fonts/  audio/
+test/
+  core/  data/  features/  widget/  fixtures/
+tool/
+  validate_adhkar.dart      بوابة التحقق من المحتوى
+  generate_branding.py      توليد الأيقونة والشعار من الصورة المصدر
+```
+
+القاعدة: الواجهة لا تعرف التخزين، والحالة في Riverpod، والبيانات خلف مستودعات.
+
+## كيف تضيف ذكرًا جديدًا
+
+اقرأ [`CONTENT_AUDIT.md`](CONTENT_AUDIT.md) أولًا — النص الشرعي لا يُكتب من
+الذاكرة ولا يُخترع له مصدر.
+
+1. أضف سجلًا إلى `assets/data/adhkar.json`:
+
+   ```json
+   {
+     "id": "morning_001",
+     "categoryId": "morning",
+     "title": "عنوان الذكر",
+     "text": "النص كما ورد في المصدر حرفًا بحرف",
+     "repeatCount": 3,
+     "sourceName": "اسم المصدر",
+     "sourceReference": "رقم الباب أو الصفحة",
+     "note": null,
+     "audioAssetPath": null,
+     "keywords": ["كلمة", "أخرى"],
+     "order": 1,
+     "verificationStatus": "verified"
+   }
+   ```
+
+2. `id` فريد عبر الملف كله، و`order` فريد داخل القسم الواحد.
+3. `repeatCount` عدد صحيح ≥ ١.
+4. شغّل `dart run tool/validate_adhkar.dart --release`.
+
+## كيف تضيف قسمًا جديدًا
+
+1. أضف سجلًا إلى `assets/data/categories.json` بمعرّف فريد و`order` فريد.
+2. اختر `iconKey` من المفاتيح المعروفة في
+   `lib/core/widgets/category_icons.dart`، أو أضف مفتاحًا جديدًا هناك.
+3. `isPrimary: true` تجعل القسم يظهر ببطاقة كبيرة في «وردك اليوم» — احتفظ بها
+   للصباح والمساء فقط حتى لا تزدحم الرئيسية.
+
+## كيف تضيف تسجيلًا صوتيًا محليًا
+
+1. ضع الملف في `assets/audio/{category}/{dhikr_id}.m4a` (أو `.mp3`).
+2. اضبط `audioAssetPath` في سجل الذكر على المسار نفسه.
+3. أضف المجلد إلى `flutter.assets` في `pubspec.yaml` إن لزم.
+4. التطبيق يفضّل التسجيل البشري تلقائيًا على محرك النطق.
+
+**لا تستخدم أي ملف صوتي من الإنترنت بلا ترخيص واضح.** «متاح للاستماع» لا يعني
+«مسموح بإعادة توزيعه».
+
+## كيف تغيّر رقم المطوّر
+
+الرقم في ملف واحد فقط:
+
+```
+lib/core/constants/developer_contact.dart
+```
+
+عدّل `phoneE164` (بصيغة `+967...`) و`whatsAppNumber` (نفس الرقم بلا `+`).
+اختبارات `test/core/contact_uris_test.dart` تتحقق من تطابقهما وصحة الروابط.
+
+## توليد الأيقونات وشاشة البداية
+
+الصورة المصدر: `assets/branding/app_icon_source.png`.
+
+```bash
+python3 tool/generate_branding.py       # يولّد الأيقونة والطبقة الأمامية والشعار
+dart run flutter_launcher_icons         # مقاسات أندرويد وiOS
+dart run flutter_native_splash:create   # شاشة البداية
+```
+
+بعدها افحص الأيقونة على جهاز أو محاكٍ حقيقي وتأكد بصريًا أن المكتوب **ذكري**.
+
+## بناء نسخة الإصدار
+
+```bash
+dart run tool/validate_adhkar.dart --release   # يجب أن تمر أولًا
+flutter build apk --release
+flutter build appbundle --release
+```
+
+المخرجات في `build/app/outputs/`.
+
+قبل النشر على المتجر: أنشئ مفتاح توقيع خاصًا وأضفه في
+`android/app/build.gradle.kts` بدل مفتاح التطوير الحالي، وراجع `applicationId`
+(`com.adam.dhikri`) — لا يمكن تغييره بعد النشر.
+
+## لماذا لا يوجد Backend
+
+لأن التطبيق لا يحتاجه:
+
+- الأذكار محتوى ثابت يُشحن مع التطبيق، فلا داعي لطلبها من الشبكة.
+- تقدُّم المستخدم شخصي ويكفيه التخزين المحلي.
+- التذكيرات تجدولها منظومة الجهاز.
+- الصوت من محرك الجهاز أو من ملفات مرفقة.
+
+النتيجة: يعمل بلا إنترنت، بلا تكلفة تشغيل، وبلا أي بيانات مستخدم تُجمع أو
+تُسرَّب. ولو أضفنا خادمًا لخسرنا هذه الخصائص الأربع دفعة واحدة.
+
+## المستندات
+
+| الملف | المحتوى |
+|---|---|
+| [`CLAUDE.md`](CLAUDE.md) | القواعد المُلزِمة للعمل في المشروع |
+| [`CONTENT_AUDIT.md`](CONTENT_AUDIT.md) | حالة توثيق نصوص الأذكار وبوابة الإصدار |
+| [`PRIVACY.md`](PRIVACY.md) | سياسة الخصوصية |
+| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | تراخيص المكتبات والخط |
+| [`QA_REPORT.md`](QA_REPORT.md) | نتائج الفحص وما لم يُختبر |
+| [`IMPLEMENTATION_LOG.md`](IMPLEMENTATION_LOG.md) | سجل مراحل التنفيذ |
+
+## التواصل
+
+‎+967774354548 — أو من داخل التطبيق: الإعدادات ← تواصل مع المطوّر.
