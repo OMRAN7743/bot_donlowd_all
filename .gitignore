@@ -1,0 +1,4 @@
+# Python bot (existing project)
+__pycache__/
+*.pyc
+*.sqlite

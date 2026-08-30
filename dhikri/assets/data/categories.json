@@ -1,0 +1,122 @@
+[
+  {
+    "id": "morning",
+    "name": "أذكار الصباح",
+    "subtitle": "وردك بعد الفجر",
+    "iconKey": "sunrise",
+    "order": 1,
+    "isPrimary": true
+  },
+  {
+    "id": "evening",
+    "name": "أذكار المساء",
+    "subtitle": "وردك بعد العصر",
+    "iconKey": "sunset",
+    "order": 2,
+    "isPrimary": true
+  },
+  {
+    "id": "sleep",
+    "name": "أذكار النوم",
+    "subtitle": "قبل أن تنام",
+    "iconKey": "moon",
+    "order": 3,
+    "isPrimary": false
+  },
+  {
+    "id": "waking",
+    "name": "أذكار الاستيقاظ",
+    "subtitle": "أول ما تفتح عينيك",
+    "iconKey": "wake",
+    "order": 4,
+    "isPrimary": false
+  },
+  {
+    "id": "after_prayer",
+    "name": "أذكار بعد الصلاة",
+    "subtitle": "عقب الصلوات المكتوبة",
+    "iconKey": "prayer",
+    "order": 5,
+    "isPrimary": false
+  },
+  {
+    "id": "wudu",
+    "name": "أذكار الوضوء",
+    "subtitle": "قبل الوضوء وبعده",
+    "iconKey": "water",
+    "order": 6,
+    "isPrimary": false
+  },
+  {
+    "id": "home",
+    "name": "أذكار المنزل",
+    "subtitle": "الدخول والخروج",
+    "iconKey": "home",
+    "order": 7,
+    "isPrimary": false
+  },
+  {
+    "id": "mosque",
+    "name": "أذكار المسجد",
+    "subtitle": "الذهاب والدخول والخروج",
+    "iconKey": "mosque",
+    "order": 8,
+    "isPrimary": false
+  },
+  {
+    "id": "food",
+    "name": "أذكار الطعام",
+    "subtitle": "قبل الأكل وبعده",
+    "iconKey": "food",
+    "order": 9,
+    "isPrimary": false
+  },
+  {
+    "id": "travel",
+    "name": "أذكار السفر",
+    "subtitle": "الركوب والسفر والعودة",
+    "iconKey": "travel",
+    "order": 10,
+    "isPrimary": false
+  },
+  {
+    "id": "distress",
+    "name": "أذكار الهم والكرب",
+    "subtitle": "عند الضيق والحزن",
+    "iconKey": "heart",
+    "order": 11,
+    "isPrimary": false
+  },
+  {
+    "id": "illness",
+    "name": "أذكار المرض",
+    "subtitle": "للمريض وعيادته",
+    "iconKey": "healing",
+    "order": 12,
+    "isPrimary": false
+  },
+  {
+    "id": "weather",
+    "name": "أذكار المطر والطقس",
+    "subtitle": "عند المطر والريح",
+    "iconKey": "weather",
+    "order": 13,
+    "isPrimary": false
+  },
+  {
+    "id": "gatherings",
+    "name": "أذكار المجالس",
+    "subtitle": "في المجلس وعند القيام منه",
+    "iconKey": "gathering",
+    "order": 14,
+    "isPrimary": false
+  },
+  {
+    "id": "misc",
+    "name": "أدعية متنوعة",
+    "subtitle": "أدعية عامة مأثورة",
+    "iconKey": "hands",
+    "order": 15,
+    "isPrimary": false
+  }
+]
